@@ -60,23 +60,25 @@ function render(submissions) {
     }
   }
 
-  // UNASSIGNED — merge arrival + departure entries for the same person
-  const mergedById = new Map();
+  // UNASSIGNED — merge arrival + departure entries for the same person.
+  // Dedupe by name+phone (not Firestore id) so duplicate test submissions still collapse.
+  const personKey = (p) => `${(p.name || "").trim().toLowerCase()}|${(p.phone || "").trim()}`;
+  const mergedByKey = new Map();
   for (const p of arrUnassigned) {
-    mergedById.set(p.id, { person: p, arrivalReason: p.reason, departureReason: null });
+    mergedByKey.set(personKey(p), { person: p, arrivalReason: p.reason, departureReason: null });
   }
   for (const p of depUnassigned) {
-    const existing = mergedById.get(p.id);
+    const k = personKey(p);
+    const existing = mergedByKey.get(k);
     if (existing) {
-      // Use the departure record's data since it carries the return-flight fields
       existing.person = { ...existing.person, ...p };
       existing.departureReason = p.reason;
     } else {
-      mergedById.set(p.id, { person: p, arrivalReason: null, departureReason: p.reason });
+      mergedByKey.set(k, { person: p, arrivalReason: null, departureReason: p.reason });
     }
   }
 
-  const merged = [...mergedById.values()];
+  const merged = [...mergedByKey.values()];
   if (merged.length > 0) {
     $("unassigned-section").classList.remove("hidden");
     const ul = $("unassigned");
