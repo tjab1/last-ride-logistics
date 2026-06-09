@@ -69,11 +69,12 @@ function render(submissions) {
     for (const p of unassigned) {
       const card = document.createElement("div");
       card.className = "ride unassigned-card";
-      const direction = p.reason?.includes("by") ? "Sunday departure" : "Arrival";
+      const isDeparture = p.reason?.includes("by");
+      const direction = isDeparture ? "Sunday departure" : "Arrival";
       card.innerHTML = `
         <h3>${escapeHtml(p.name)} <span class="pill danger">${direction}</span></h3>
         <div class="when">${escapeHtml(p.reason || "Unmatched")}</div>
-        <div>${renderPassengerLine(p)}</div>
+        <div>${renderPassengerLine(p, isDeparture ? "departure" : "arrival")}</div>
       `;
       ul.appendChild(card);
     }
@@ -117,7 +118,7 @@ function renderRide(r, kind) {
     <div class="when">${escapeHtml(when)} · driver: ${escapeHtml(r.driverPhone || "")}</div>
     ${
       r.passengers && r.passengers.length > 0
-        ? `<ul>${r.passengers.map((p) => `<li>${renderPassengerLine(p)}</li>`).join("")}</ul>`
+        ? `<ul>${r.passengers.map((p) => `<li>${renderPassengerLine(p, kind)}</li>`).join("")}</ul>`
         : kind === "direct"
         ? `<div style="color:var(--ink-soft); font-style: italic; font-size:0.9rem;">No passengers — riding solo.</div>`
         : `<div style="color:var(--ink-soft); font-style: italic; font-size:0.9rem;">No passengers assigned.</div>`
@@ -127,13 +128,18 @@ function renderRide(r, kind) {
   return div;
 }
 
-function renderPassengerLine(p) {
+function renderPassengerLine(p, kind) {
   if (p.mode === "flying" || p.arriveAirport) {
-    const arr = p.arriveTime ? ` (lands ${fmtTime(toMin(p.arriveDate, p.arriveTime))})` : "";
-    const ret = p.returnTime && p.returnAirport
-      ? ` · flies out ${fmtDate(p.returnDate)} ${fmtTime(toMin(p.returnDate, p.returnTime))} from ${p.returnAirport}`
+    if (kind === "departure") {
+      const ret = p.returnTime && p.returnAirport
+        ? ` flies out ${fmtDate(p.returnDate)} ${fmtTime(toMin(p.returnDate, p.returnTime))} from ${p.returnAirport}`
+        : "";
+      return `<strong>${escapeHtml(p.name)}</strong>${ret ? " ·" + ret : ""}`;
+    }
+    const arr = p.arriveTime && p.arriveAirport
+      ? ` gets into ${p.arriveAirport} at ${fmtTime(toMin(p.arriveDate, p.arriveTime))}`
       : "";
-    return `<strong>${escapeHtml(p.name)}</strong>${arr}${ret}`;
+    return `<strong>${escapeHtml(p.name)}</strong>${arr}`;
   }
   if (p.mode === "kentucky") {
     return `<strong>${escapeHtml(p.name)}</strong> (from ${escapeHtml(p.town || "KY")})`;
