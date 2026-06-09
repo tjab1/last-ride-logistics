@@ -32,7 +32,7 @@ $("driver-airport-help-picker").addEventListener("click", (e) => {
 
   if (airportHelp === "no") {
     // Hide the "Down" button and lock the "Naw cheif" button to the joke text
-    btn.textContent = "I like femboys so I don't have a choice";
+    btn.textContent = "I'm a good boy and don't have a choice";
     btn.disabled = true;
     const yesBtn = $("driver-airport-help-picker").querySelector('[data-help="yes"]');
     if (yesBtn) yesBtn.classList.add("hidden");
