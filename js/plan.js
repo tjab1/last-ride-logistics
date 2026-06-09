@@ -60,21 +60,47 @@ function render(submissions) {
     }
   }
 
-  // UNASSIGNED
-  const unassigned = [...arrUnassigned, ...depUnassigned];
-  if (unassigned.length > 0) {
+  // UNASSIGNED — merge arrival + departure entries for the same person
+  const mergedById = new Map();
+  for (const p of arrUnassigned) {
+    mergedById.set(p.id, { person: p, arrivalReason: p.reason, departureReason: null });
+  }
+  for (const p of depUnassigned) {
+    const existing = mergedById.get(p.id);
+    if (existing) {
+      // Use the departure record's data since it carries the return-flight fields
+      existing.person = { ...existing.person, ...p };
+      existing.departureReason = p.reason;
+    } else {
+      mergedById.set(p.id, { person: p, arrivalReason: null, departureReason: p.reason });
+    }
+  }
+
+  const merged = [...mergedById.values()];
+  if (merged.length > 0) {
     $("unassigned-section").classList.remove("hidden");
     const ul = $("unassigned");
     ul.innerHTML = "";
-    for (const p of unassigned) {
+    for (const { person, arrivalReason, departureReason } of merged) {
       const card = document.createElement("div");
       card.className = "ride unassigned-card";
-      const isDeparture = p.reason?.includes("by");
-      const direction = isDeparture ? "Sunday departure" : "Arrival";
+      const pills = [];
+      const reasonLines = [];
+      const detailLines = [];
+      if (arrivalReason) {
+        pills.push(`<span class="pill danger">Arrival</span>`);
+        reasonLines.push(arrivalReason);
+        detailLines.push(renderPassengerLine(person, "arrival"));
+      }
+      if (departureReason) {
+        pills.push(`<span class="pill danger">Sunday departure</span>`);
+        reasonLines.push(departureReason);
+        detailLines.push(renderPassengerLine(person, "departure"));
+      }
       card.innerHTML = `
-        <h3>${escapeHtml(p.name)} <span class="pill danger">${direction}</span></h3>
-        <div class="when">${escapeHtml(p.reason || "Unmatched")}</div>
-        <div>${renderPassengerLine(p, isDeparture ? "departure" : "arrival")}</div>
+        <h3>${escapeHtml(person.name)} ${pills.join(" ")}</h3>
+        <div class="when">${reasonLines.map(escapeHtml).join("<br>")}</div>
+        <div>${detailLines.join("<br>")}</div>
       `;
       ul.appendChild(card);
     }
