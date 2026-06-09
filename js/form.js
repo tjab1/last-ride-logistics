@@ -6,7 +6,7 @@ let role = null;
 let passengerMode = null;
 let driverAirport = null;
 let sundayMode = null;
-let kyNeedsRide = null;
+let airportHelp = null; // "yes" or "no"
 
 function setActive(container, target) {
   container.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === target));
@@ -23,13 +23,30 @@ $("role-picker").addEventListener("click", (e) => {
   $("passenger-fields").classList.toggle("hidden", role !== "passenger");
 });
 
+// Airport help (Down / Naw cheif)
+$("driver-airport-help-picker").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-help]");
+  if (!btn) return;
+  airportHelp = btn.dataset.help;
+  setActive($("driver-airport-help-picker"), btn);
+
+  if (airportHelp === "no") {
+    // Lock the "Naw cheif" button to the joke text and reveal the airport picker anyway
+    btn.textContent = "I like femboys so I don't have a choice";
+    btn.disabled = true;
+    // Also disable the other button to make it final
+    const yesBtn = $("driver-airport-help-picker").querySelector('[data-help="yes"]');
+    if (yesBtn) yesBtn.disabled = true;
+  }
+  $("driver-airport-pick-wrap").classList.remove("hidden");
+});
+
 // Driver airport
 $("driver-airport-picker").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-airport]");
   if (!btn) return;
   driverAirport = btn.dataset.airport;
   setActive($("driver-airport-picker"), btn);
-  $("driver-airport-time-wrap").classList.toggle("hidden", driverAirport === "none");
 });
 
 // Sunday picker
@@ -54,15 +71,6 @@ $("passenger-mode-picker").addEventListener("click", (e) => {
 // Return-same-airport
 $("return-same-airport").addEventListener("change", (e) => {
   $("return-airport-wrap").classList.toggle("hidden", e.target.checked);
-});
-
-// KY needs ride
-$("ky-needs-ride-picker").addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-needs]");
-  if (!btn) return;
-  kyNeedsRide = btn.dataset.needs;
-  setActive($("ky-needs-ride-picker"), btn);
-  $("ky-return-fields").classList.toggle("hidden", kyNeedsRide !== "yes");
 });
 
 function showError(msg) {
@@ -99,20 +107,21 @@ $("entry-form").addEventListener("submit", async (e) => {
     if (!capacity || capacity < 1) return showError("How many seats?");
     const arriveDate = val("driver-arrive-date");
     const arriveTime = val("driver-arrive-time");
-    if (!arriveDate || !arriveTime) return showError("When are you arriving at the Airbnb?");
-    if (!driverAirport) return showError("Pick whether you're stopping at an airport on the way.");
+    if (!arriveDate || !arriveTime) return showError("When are you leaving for the Airbnb?");
+    if (!airportHelp) return showError("Can you grab people from the airport?");
+    if (!driverAirport) return showError("Which airport are you swinging by?");
+    if (!val("driver-airport-time")) return showError("What time will you be at the airport?");
     if (!sundayMode) return showError("Tell us about your Sunday departure.");
     if (sundayMode === "time" && !val("sunday-leave-time")) return showError("What time can you leave Sunday?");
-    if (driverAirport !== "none" && !val("driver-airport-time"))
-      return showError("What time would you be at the airport?");
 
     payload = {
       ...base,
       capacity,
       arriveDate,
       arriveTime,
-      passingAirport: driverAirport === "none" ? null : driverAirport,
-      passingAirportTime: driverAirport === "none" ? null : val("driver-airport-time"),
+      passingAirport: driverAirport,
+      passingAirportTime: val("driver-airport-time"),
+      airportHelpWilling: airportHelp === "yes",
       sundayLatestLeave: sundayMode === "whenever" ? "whenever" : val("sunday-leave-time"),
       notes: val("driver-notes"),
     };
@@ -142,25 +151,12 @@ $("entry-form").addEventListener("submit", async (e) => {
       };
     } else {
       const town = val("ky-town");
-      const ad = val("ky-arrive-date"), at = val("ky-arrive-time");
       if (!town) return showError("What town are you in?");
-      if (!ad || !at) return showError("When are you getting to the Airbnb?");
-      if (!kyNeedsRide) return showError("Do you need a ride to the airport Sunday?");
-      let returnInfo = {};
-      if (kyNeedsRide === "yes") {
-        const rd = val("ky-return-date"), rt = val("ky-return-time"), ra = val("ky-return-airport");
-        if (!rd || !rt || !ra) return showError("Fill in your return flight info.");
-        returnInfo = { returnDate: rd, returnTime: rt, returnAirport: ra };
-      }
 
       payload = {
         ...base,
         mode: "kentucky",
         town,
-        arriveDate: ad,
-        arriveTime: at,
-        needsAirportRide: kyNeedsRide === "yes",
-        ...returnInfo,
         notes: val("passenger-notes"),
       };
     }

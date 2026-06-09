@@ -83,12 +83,6 @@ function renderPeople() {
       rows.push(["Returns", `${fmt(s.returnDate)} ${fmt(s.returnTime)} from ${fmt(s.returnAirport)}`]);
     } else if (s.mode === "kentucky") {
       rows.push(["From", fmt(s.town)]);
-      rows.push(["Arrives", `${fmt(s.arriveDate)} ${fmt(s.arriveTime)}`]);
-      if (s.needsAirportRide) {
-        rows.push(["Sun. ride", `to ${fmt(s.returnAirport)} for ${fmt(s.returnTime)}`]);
-      } else {
-        rows.push(["Sun. ride", "Has own ride"]);
-      }
     }
 
     card.innerHTML = `

@@ -51,23 +51,30 @@
             Heads up: those seats also need to fit luggage. If you've got a 4-seater and 4 guys with golf bags, the math doesn't work. Be honest.
           </div>
 
-          <label for="driver-arrive-date">When are you getting to the Airbnb?</label>
+          <label for="driver-arrive-date">When are you leaving for the Airbnb?</label>
           <div class="row">
-            <input id="driver-arrive-date" type="date" min="2026-07-09" max="2026-07-12" />
-            <input id="driver-arrive-time" type="time" />
+            <input id="driver-arrive-date" type="date" min="2026-07-09" max="2026-07-12" value="2026-07-10" />
+            <input id="driver-arrive-time" type="time" value="09:00" />
           </div>
 
-          <label>Are you passing by an airport on the way down?</label>
-          <div class="subrole-picker" id="driver-airport-picker">
-            <button type="button" data-airport="none">No, direct</button>
-            <button type="button" data-airport="CVG">CVG</button>
-            <button type="button" data-airport="SDF">SDF</button>
-            <button type="button" data-airport="BNA">BNA</button>
-            <button type="button" data-airport="LEX">LEX</button>
+          <label id="airport-help-label">Can you get people from the airport?</label>
+          <div class="subrole-picker" id="driver-airport-help-picker">
+            <button type="button" data-help="yes">Down</button>
+            <button type="button" data-help="no">Naw cheif</button>
           </div>
-          <div id="driver-airport-time-wrap" class="hidden">
-            <label for="driver-airport-time">What time could you be at that airport for pickup?</label>
-            <input id="driver-airport-time" type="time" />
+
+          <div id="driver-airport-pick-wrap" class="hidden">
+            <label>Which airport?</label>
+            <div class="subrole-picker" id="driver-airport-picker">
+              <button type="button" data-airport="CVG">CVG</button>
+              <button type="button" data-airport="SDF">SDF</button>
+              <button type="button" data-airport="BNA">BNA</button>
+              <button type="button" data-airport="LEX">LEX</button>
+            </div>
+            <div id="driver-airport-time-wrap">
+              <label for="driver-airport-time">What time could you be at that airport?</label>
+              <input id="driver-airport-time" type="time" />
+            </div>
           </div>
 
           <label>How late can you stick around on Sunday before heading back?</label>
@@ -81,7 +88,7 @@
           </div>
 
           <label for="driver-notes">Anything else? <span class="hint">(optional)</span></label>
-          <textarea id="driver-notes" placeholder="Truck bed for golf clubs, allergic to country music, etc."></textarea>
+          <textarea id="driver-notes" placeholder="Truck bed for golf clubs, allergic to minorities, etc."></textarea>
         </div>
 
         <!-- PASSENGER FIELDS -->
@@ -134,33 +141,6 @@
           <div id="kentucky-fields" class="hidden">
             <label for="ky-town">What town are you in?</label>
             <input id="ky-town" type="text" placeholder="Bowling Green, Paducah, etc." />
-
-            <label>When are you getting to the Airbnb?</label>
-            <div class="row">
-              <input id="ky-arrive-date" type="date" min="2026-07-09" max="2026-07-12" />
-              <input id="ky-arrive-time" type="time" />
-            </div>
-
-            <label>Do you need a ride to an airport on Sunday?</label>
-            <div class="subrole-picker" id="ky-needs-ride-picker">
-              <button type="button" data-needs="no">No, I've got it</button>
-              <button type="button" data-needs="yes">Yes, please</button>
-            </div>
-            <div id="ky-return-fields" class="hidden">
-              <label>Return flight</label>
-              <div class="row">
-                <input id="ky-return-date" type="date" min="2026-07-12" max="2026-07-13" />
-                <input id="ky-return-time" type="time" />
-              </div>
-              <label for="ky-return-airport">Return airport</label>
-              <select id="ky-return-airport">
-                <option value="">— Pick one —</option>
-                <option value="CVG">Cincinnati (CVG)</option>
-                <option value="SDF">Louisville (SDF)</option>
-                <option value="BNA">Nashville (BNA)</option>
-                <option value="LEX">Lexington (LEX)</option>
-              </select>
-            </div>
           </div>
 
           <label for="passenger-notes">Anything else? <span class="hint">(optional)</span></label>

@@ -49,6 +49,14 @@ a { color: var(--bourbon-dark); }
   padding: 32px 20px 80px;
 }
 
+@media (max-width: 540px) {
+  .wrap, .wrap-wide { padding: 20px 14px 60px; }
+  h1 { font-size: 1.7rem; }
+  h2 { font-size: 1.25rem; }
+  .card { padding: 18px 16px; }
+  body { font-size: 15px; }
+}
+
 header.brand {
   text-align: center;
   margin-bottom: 32px;
@@ -104,13 +112,14 @@ input[type="number"],
 select,
 textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: #fff;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 16px; /* prevents iOS zoom on focus */
   color: var(--ink);
+  min-height: 44px;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -148,6 +157,8 @@ textarea { min-height: 80px; resize: vertical; }
   color: var(--ink);
   cursor: pointer;
   transition: all 0.15s;
+  min-height: 80px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .role-picker button:hover {
@@ -173,19 +184,35 @@ textarea { min-height: 80px; resize: vertical; }
 
 .subrole-picker {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 8px 0;
 }
 
 .subrole-picker button {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 80px;
   background: var(--cream);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 10px;
+  padding: 12px 10px;
   cursor: pointer;
   font-family: inherit;
   font-size: 0.95rem;
+  min-height: 44px;
+}
+
+.subrole-picker button:disabled {
+  cursor: default;
+}
+
+.subrole-picker button[data-help="no"]:disabled {
+  background: var(--green);
+  color: var(--cream);
+  border-color: var(--green);
+  font-style: italic;
+  font-size: 0.85rem;
+  flex-basis: 100%;
 }
 
 .subrole-picker button.active {
@@ -219,14 +246,18 @@ textarea { min-height: 80px; resize: vertical; }
   background: var(--bourbon);
   color: var(--cream);
   border: none;
-  padding: 12px 24px;
+  padding: 14px 24px;
   font-size: 1rem;
   font-weight: 600;
   font-family: inherit;
   border-radius: 4px;
   cursor: pointer;
   text-decoration: none;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
 }
+
+.btn:disabled { opacity: 0.55; cursor: default; }
 
 .btn:hover { background: var(--bourbon-dark); }
 
