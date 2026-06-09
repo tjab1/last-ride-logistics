@@ -154,22 +154,25 @@ export function planArrivals(submissions) {
 }
 
 // --------------- SUNDAY DEPARTURES ---------------
-// For each passenger who needs a Sunday airport ride:
-//   - compute must-leave-Cadiz-by = flightTime - airportDriveMin - PREFLIGHT_BUFFER_MIN
-//   - find drivers who can leave Cadiz at-or-before that time AND go to that airport
-//   - greedy: assign tightest-deadline passenger first
+// Backtracking search over (passenger × driver/ride) assignments.
+// Goal: maximize number of passengers served.
+// Constraints:
+//   - Each driver makes at most ONE Sunday airport run (they go home from the airport)
+//   - A trip serves passengers all going to the same return airport
+//   - Trip leave time = earliest deadline among its passengers (auto-feasible for all)
+//   - Driver "latest leave on Sunday" must be ≥ the trip's leave time (i.e., they're
+//     willing to be in Cadiz that late). A driver who can stay later is more flexible.
 
 export function planDepartures(submissions) {
   const drivers = submissions.filter((s) => s.role === "driver");
-  const passengers = submissions.filter((s) => {
+  const allPassengers = submissions.filter((s) => {
     if (s.role !== "passenger") return false;
     if (s.mode === "flying") return true;
     if (s.mode === "kentucky" && s.needsAirportRide) return true;
     return false;
   });
 
-  // Annotate each passenger with normalized leave date+time (accounts for cross-midnight)
-  const enriched = passengers
+  const enriched = allPassengers
     .filter((p) => p.returnDate && p.returnTime && p.returnAirport)
     .map((p) => {
       const flightMin = toMin(p.returnDate, p.returnTime);
@@ -179,79 +182,122 @@ export function planDepartures(submissions) {
       return { ...p, mustLeaveBy, flightMin, driveMin, leaveDate: norm.date, leaveMin: norm.minutes };
     });
 
-  // Drivers: remaining capacity, latest leave time (whenever = very late)
-  const remaining = {};
-  drivers.forEach((d) => (remaining[d.id] = d.capacity || 0));
+  // Tightest-deadline first — drives pruning and produces stable output
+  enriched.sort((a, b) => {
+    if (a.leaveDate !== b.leaveDate) return a.leaveDate.localeCompare(b.leaveDate);
+    return a.leaveMin - b.leaveMin;
+  });
 
-  const driverLatestLeave = (d) => {
-    if (!d.sundayLatestLeave || d.sundayLatestLeave === "whenever") return 24 * 60 - 1;
-    return toMin("2026-07-12", d.sundayLatestLeave);
+  // Driver's latest acceptable leave time, as absolute minutes anchored to Sun 7/12.
+  // Lets us compare across midnight-spanning rides.
+  const driverLatestAbs = (d) => {
+    if (!d.sundayLatestLeave || d.sundayLatestLeave === "whenever") {
+      // "Whenever" = no constraint. Use end-of-Monday as the cap.
+      return toAbs("2026-07-13", "23:59");
+    }
+    return toAbs("2026-07-12", d.sundayLatestLeave);
   };
 
-  // Sort passengers by tightest deadline (earliest mustLeaveBy)
-  enriched.sort((a, b) => a.mustLeaveBy - b.mustLeaveBy);
+  const driverList = drivers.map((d) => ({
+    ...d,
+    _cap: d.capacity || 0,
+    _latestAbs: driverLatestAbs(d),
+  }));
 
-  const rides = []; // {airport, date, leaveBy, passengers, driverId, flags}
-  const unassigned = [];
+  const best = { covered: -1, rides: [] };
 
-  // Index drivers by airport availability (a driver can serve any airport — but only one trip)
-  // For v1, each driver does one Sunday airport run.
-  const driverAssignedAirport = {};
+  // Backtracking: for each passenger in tightest-deadline order, try (skip / add-to-ride / new-ride).
+  function search(pIdx, rides, usedDriverIds) {
+    const currentCovered = rides.reduce((s, r) => s + r.passengers.length, 0);
+    const remaining = enriched.length - pIdx;
+    if (currentCovered + remaining <= best.covered) return; // prune
 
-  for (const p of enriched) {
-    // Find an existing ride going to same airport on same (normalized) leave day where we can squeeze in
-    let ride = rides.find(
-      (r) =>
-        r.airport === p.returnAirport &&
-        r.date === p.leaveDate &&
-        remaining[r.driverId] > 0 &&
-        r.leaveBy <= p.leaveMin
-    );
+    if (pIdx >= enriched.length) {
+      if (currentCovered > best.covered) {
+        best.covered = currentCovered;
+        best.rides = rides.map((r) => ({
+          driver: r.driver,
+          airport: r.airport,
+          leaveDate: r.leaveDate,
+          leaveBy: r.leaveBy,
+          passengers: [...r.passengers],
+        }));
+      }
+      return;
+    }
 
-    if (ride) {
+    const p = enriched[pIdx];
+
+    // Option A: leave this passenger unassigned
+    search(pIdx + 1, rides, usedDriverIds);
+
+    // Option B: add to an existing compatible ride
+    for (const ride of rides) {
+      if (ride.airport !== p.returnAirport) continue;
+      if (ride.leaveDate !== p.leaveDate) continue;
+      if (ride.passengers.length >= ride.driver._cap) continue;
+      // After adding p, ride.leaveBy might shift earlier; driver must still be willing
+      const newLeaveBy = Math.min(ride.leaveBy, p.leaveMin);
+      const newLeaveAbs = toAbs(ride.leaveDate, minToHHMM(newLeaveBy));
+      if (newLeaveAbs > ride.driver._latestAbs) continue; // driver wants to leave earlier than this
+      const oldLeaveBy = ride.leaveBy;
       ride.passengers.push(p);
-      ride.leaveBy = Math.min(ride.leaveBy, p.leaveMin);
-      remaining[ride.driverId]--;
-      continue;
+      ride.leaveBy = newLeaveBy;
+      search(pIdx + 1, rides, usedDriverIds);
+      ride.passengers.pop();
+      ride.leaveBy = oldLeaveBy;
     }
 
-    // Find a driver who can take this passenger
-    const candidate = drivers.find((d) => {
-      if (remaining[d.id] <= 0) return false;
-      // If driver already assigned an airport, must match
-      if (driverAssignedAirport[d.id] && driverAssignedAirport[d.id] !== p.returnAirport) return false;
-      // Driver's latest-leave must be at-or-before passenger's mustLeaveBy
-      // ("latest leave" means the driver can leave NO LATER than this — so they're flexible to leave earlier)
-      if (driverLatestLeave(d) < p.mustLeaveBy) return false;
-      return true;
-    });
-
-    if (!candidate) {
-      unassigned.push({
-        ...p,
-        reason: `No driver can leave Cadiz by ${fmtDate(p.leaveDate)} ${fmtTime(p.leaveMin)} for ${p.returnAirport}`,
+    // Option C: start a new ride with an unused driver
+    for (const d of driverList) {
+      if (usedDriverIds.has(d.id)) continue;
+      if (d._cap < 1) continue;
+      const newLeaveAbs = toAbs(p.leaveDate, minToHHMM(p.leaveMin));
+      if (newLeaveAbs > d._latestAbs) continue; // driver wants to leave before passenger's deadline
+      rides.push({
+        driver: d,
+        airport: p.returnAirport,
+        leaveDate: p.leaveDate,
+        leaveBy: p.leaveMin,
+        passengers: [p],
       });
-      continue;
+      usedDriverIds.add(d.id);
+      search(pIdx + 1, rides, usedDriverIds);
+      rides.pop();
+      usedDriverIds.delete(d.id);
     }
-
-    driverAssignedAirport[candidate.id] = p.returnAirport;
-    ride = {
-      type: "departure",
-      driverId: candidate.id,
-      driverName: candidate.name,
-      driverPhone: candidate.phone,
-      airport: p.returnAirport,
-      airportName: AIRPORTS[p.returnAirport]?.name || p.returnAirport,
-      date: p.leaveDate,
-      leaveBy: p.leaveMin,
-      passengers: [p],
-      flags: [],
-    };
-    rides.push(ride);
-    remaining[candidate.id]--;
   }
 
-  return { rides, unassigned };
+  search(0, [], new Set());
+
+  const finalRides = best.rides.map((r) => ({
+    type: "departure",
+    driverId: r.driver.id,
+    driverName: r.driver.name,
+    driverPhone: r.driver.phone,
+    airport: r.airport,
+    airportName: AIRPORTS[r.airport]?.name || r.airport,
+    date: r.leaveDate,
+    leaveBy: r.leaveBy,
+    passengers: r.passengers,
+    flags: [],
+  }));
+
+  const assignedIds = new Set(finalRides.flatMap((r) => r.passengers.map((p) => p.id)));
+  const unassigned = enriched
+    .filter((p) => !assignedIds.has(p.id))
+    .map((p) => ({
+      ...p,
+      reason: `No driver available to ${p.returnAirport} by ${fmtDate(p.leaveDate)} ${fmtTime(p.leaveMin)}`,
+    }));
+
+  return { rides: finalRides, unassigned };
+}
+
+function minToHHMM(m) {
+  const h = String(Math.floor(m / 60)).padStart(2, "0");
+  const mm = String(m % 60).padStart(2, "0");
+  return `${h}:${mm}`;
 }
 
 export const helpers = { fmtTime, fmtDate, toMin };
