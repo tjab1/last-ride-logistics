@@ -7,6 +7,7 @@ let passengerMode = null;
 let driverAirport = null;
 let sundayMode = null;
 let airportHelp = null; // "yes" or "no"
+let airportTimeMode = null; // "time" or "anytime"
 
 function setActive(container, target) {
   container.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === target));
@@ -46,6 +47,15 @@ $("driver-airport-picker").addEventListener("click", (e) => {
   if (!btn) return;
   driverAirport = btn.dataset.airport;
   setActive($("driver-airport-picker"), btn);
+});
+
+// Airport time mode (Set a time / Anytime)
+$("airport-time-picker").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-airport-time]");
+  if (!btn) return;
+  airportTimeMode = btn.dataset.airportTime;
+  setActive($("airport-time-picker"), btn);
+  $("driver-airport-time-wrap").classList.toggle("hidden", airportTimeMode !== "time");
 });
 
 // Sunday picker
@@ -109,7 +119,9 @@ $("entry-form").addEventListener("submit", async (e) => {
     if (!arriveDate || !arriveTime) return showError("When are you leaving for the Airbnb?");
     if (!airportHelp) return showError("Can you grab people from the airport?");
     if (!driverAirport) return showError("Which airport are you swinging by?");
-    if (!val("driver-airport-time")) return showError("What time will you be at the airport?");
+    if (!airportTimeMode) return showError("What time can you be at the airport?");
+    if (airportTimeMode === "time" && !val("driver-airport-time"))
+      return showError("Pick a time or choose 'Anytime'.");
     if (!sundayMode) return showError("Tell us about your Sunday departure.");
     if (sundayMode === "time" && !val("sunday-leave-time")) return showError("What time can you leave Sunday?");
 
@@ -119,7 +131,7 @@ $("entry-form").addEventListener("submit", async (e) => {
       arriveDate,
       arriveTime,
       passingAirport: driverAirport,
-      passingAirportTime: val("driver-airport-time"),
+      passingAirportTime: airportTimeMode === "anytime" ? "anytime" : val("driver-airport-time"),
       airportHelpWilling: airportHelp === "yes",
       sundayLatestLeave: sundayMode === "whenever" ? "whenever" : val("sunday-leave-time"),
       notes: val("driver-notes"),

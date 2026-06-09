@@ -71,8 +71,12 @@
               <button type="button" data-airport="BNA">BNA</button>
               <button type="button" data-airport="LEX">LEX</button>
             </div>
-            <div id="driver-airport-time-wrap">
-              <label for="driver-airport-time">What time could you be at that airport?</label>
+            <label>What time could you be at that airport?</label>
+            <div class="subrole-picker" id="airport-time-picker">
+              <button type="button" data-airport-time="time">Set a time</button>
+              <button type="button" data-airport-time="anytime">Anytime that day</button>
+            </div>
+            <div id="driver-airport-time-wrap" class="hidden">
               <input id="driver-airport-time" type="time" />
             </div>
           </div>

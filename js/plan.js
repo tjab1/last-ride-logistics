@@ -94,7 +94,8 @@ function renderRide(r, kind) {
     pillText = "Arrival";
     pillCls = "";
     header = `${r.driverName}'s car → ${r.airportName}`;
-    when = `${fmtDate(r.date)} · pickup ${fmtTime(r.pickupTime)} at ${r.airport}`;
+    const pickupStr = r.pickupAnytime ? "anytime" : fmtTime(r.pickupTime);
+    when = `${fmtDate(r.date)} · pickup ${pickupStr} at ${r.airport}`;
   } else if (kind === "direct") {
     pillText = "Direct";
     pillCls = "green";

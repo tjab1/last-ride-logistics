@@ -50,12 +50,18 @@ export function planArrivals(submissions) {
   // Assigned set: passenger ids that already have a ride
   const assigned = new Set();
 
-  // Sort drivers by absolute airport-pass datetime
+  // Sort drivers by absolute airport-pass datetime.
+  // "anytime" drivers get treated as end-of-day on their arriveDate (matches anyone
+  // who landed earlier that day or before).
   const driversByPass = drivers
     .filter((d) => d.passingAirport && d.passingAirportTime && d.arriveDate)
     .map((d) => ({
       ...d,
-      _absPass: toAbs(d.arriveDate, d.passingAirportTime),
+      _isAnytime: d.passingAirportTime === "anytime",
+      _absPass:
+        d.passingAirportTime === "anytime"
+          ? toAbs(d.arriveDate, "23:59")
+          : toAbs(d.arriveDate, d.passingAirportTime),
     }))
     .sort((a, b) => a._absPass - b._absPass);
 
@@ -77,13 +83,15 @@ export function planArrivals(submissions) {
 
     const taken = eligible.slice(0, cap);
     const flags = [];
-    for (const p of taken) {
-      const waitMin = d._absPass - (p._absLand + DEPLANE_BUFFER_MIN);
-      if (waitMin >= LONG_WAIT_FLAG_MIN) {
-        flags.push({
-          level: "warn",
-          msg: `${p.name} lands ${fmtDate(p.arriveDate)} ${fmtTime(toMin(p.arriveDate, p.arriveTime))} — ${Math.round(waitMin / 60)}h before pickup.`,
-        });
+    if (!d._isAnytime) {
+      for (const p of taken) {
+        const waitMin = d._absPass - (p._absLand + DEPLANE_BUFFER_MIN);
+        if (waitMin >= LONG_WAIT_FLAG_MIN) {
+          flags.push({
+            level: "warn",
+            msg: `${p.name} lands ${fmtDate(p.arriveDate)} ${fmtTime(toMin(p.arriveDate, p.arriveTime))} — ${Math.round(waitMin / 60)}h before pickup.`,
+          });
+        }
       }
     }
 
@@ -95,7 +103,8 @@ export function planArrivals(submissions) {
       airport: d.passingAirport,
       airportName: AIRPORTS[d.passingAirport]?.name || d.passingAirport,
       date: d.arriveDate,
-      pickupTime: toMin(d.arriveDate, d.passingAirportTime),
+      pickupTime: d._isAnytime ? null : toMin(d.arriveDate, d.passingAirportTime),
+      pickupAnytime: d._isAnytime,
       passengers: taken,
       flags,
     });

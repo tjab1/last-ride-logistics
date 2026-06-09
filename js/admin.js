@@ -76,7 +76,7 @@ function renderPeople() {
     if (s.role === "driver") {
       rows.push(["Capacity", `${s.capacity} seat(s)`]);
       rows.push(["Arrives", `${fmt(s.arriveDate)} ${fmt(s.arriveTime)}`]);
-      rows.push(["Via airport", s.passingAirport ? `${s.passingAirport} @ ${fmt(s.passingAirportTime)}` : "Direct"]);
+      rows.push(["Via airport", s.passingAirport ? `${s.passingAirport} @ ${s.passingAirportTime === "anytime" ? "anytime" : fmt(s.passingAirportTime)}` : "Direct"]);
       rows.push(["Sun. leave", s.sundayLatestLeave === "whenever" ? "Whenever" : `By ${fmt(s.sundayLatestLeave)}`]);
     } else if (s.mode === "flying") {
       rows.push(["Arrives", `${fmt(s.arriveDate)} ${fmt(s.arriveTime)} @ ${fmt(s.arriveAirport)}`]);
