@@ -157,8 +157,8 @@ $("entry-form").addEventListener("submit", async (e) => {
     if (!airportTimeMode) return showError("What time can you be at the airport?");
     if (airportTimeMode === "time" && !val("driver-airport-time"))
       return showError("Pick a time or choose 'Anytime'.");
-    if (!sundayMode) return showError("Tell us about your Sunday departure.");
-    if (sundayMode === "time" && !val("sunday-leave-time")) return showError("What time can you leave Sunday?");
+    if (!sundayMode) return showError("Tell us about your Monday departure.");
+    if (sundayMode === "time" && !val("sunday-leave-time")) return showError("What time can you leave Monday?");
 
     const airportsArr = [...driverAirports];
     payload = {

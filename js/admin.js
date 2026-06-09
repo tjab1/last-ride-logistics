@@ -80,7 +80,7 @@ function renderPeople() {
         ? s.passingAirports.join("/")
         : s.passingAirport;
       rows.push(["Via airport", aps ? `${aps} @ ${s.passingAirportTime === "anytime" ? "anytime" : fmt(s.passingAirportTime)}` : "Direct"]);
-      rows.push(["Sun. leave", s.sundayLatestLeave === "whenever" ? "Whenever" : `By ${fmt(s.sundayLatestLeave)}`]);
+      rows.push(["Mon. leave", s.sundayLatestLeave === "whenever" ? "Whenever" : `By ${fmt(s.sundayLatestLeave)}`]);
     } else if (s.mode === "flying") {
       rows.push(["Arrives", `${fmt(s.arriveDate)} ${fmt(s.arriveTime)} @ ${fmt(s.arriveAirport)}`]);
       rows.push(["Returns", `${fmt(s.returnDate)} ${fmt(s.returnTime)} from ${fmt(s.returnAirport)}`]);

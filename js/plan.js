@@ -50,7 +50,7 @@ function render(submissions) {
   $("departure-meta").textContent = depCount === 0 ? "Nothing scheduled" : `${depCount} airport runs`;
 
   if (depRides.length === 0) {
-    departureEl.innerHTML = `<div class="empty-state">No Sunday airport runs yet.</div>`;
+    departureEl.innerHTML = `<div class="empty-state">No Monday airport runs yet.</div>`;
   } else {
     const sorted = [...depRides].sort(
       (a, b) => a.date.localeCompare(b.date) || a.leaveBy - b.leaveBy
@@ -95,7 +95,7 @@ function render(submissions) {
         detailLines.push(renderPassengerLine(person, "arrival"));
       }
       if (departureReason) {
-        pills.push(`<span class="pill danger">Sunday departure</span>`);
+        pills.push(`<span class="pill danger">Monday departure</span>`);
         reasonLines.push(departureReason);
         detailLines.push(renderPassengerLine(person, "departure"));
       }
@@ -135,7 +135,7 @@ function renderRide(r, kind) {
       : `${fmtDate(r.date)}${passingHint}`;
     if ((r.passengers || []).length === 0) div.classList.add("empty");
   } else {
-    pillText = "Sunday";
+    pillText = "Monday";
     pillCls = "";
     header = `${r.driverName}'s car → ${r.airportName}`;
     when = `${fmtDate(r.date)} · leave Cadiz by ${fmtTime(r.leaveBy)}`;

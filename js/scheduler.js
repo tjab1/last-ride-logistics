@@ -181,15 +181,16 @@ export function planArrivals(submissions) {
   return { rides, directDrivers, unassigned };
 }
 
-// --------------- SUNDAY DEPARTURES ---------------
+// --------------- MONDAY DEPARTURES ---------------
 // Backtracking search over (passenger × driver/ride) assignments.
 // Goal: maximize number of passengers served.
 // Constraints:
-//   - Each driver makes at most ONE Sunday airport run (they go home from the airport)
+//   - Each driver makes at most ONE airport run on the way out (they go home from the airport)
 //   - A trip serves passengers all going to the same return airport
 //   - Trip leave time = earliest deadline among its passengers (auto-feasible for all)
-//   - Driver "latest leave on Sunday" must be ≥ the trip's leave time (i.e., they're
+//   - Driver "latest leave on Monday" must be ≥ the trip's leave time (i.e., they're
 //     willing to be in Cadiz that late). A driver who can stay later is more flexible.
+// Note: data field is still named `sundayLatestLeave` for back-compat with old rows.
 
 export function planDepartures(submissions) {
   const drivers = submissions.filter((s) => s.role === "driver");
@@ -216,14 +217,14 @@ export function planDepartures(submissions) {
     return a.leaveMin - b.leaveMin;
   });
 
-  // Driver's latest acceptable leave time, as absolute minutes anchored to Sun 7/12.
+  // Driver's latest acceptable leave time, as absolute minutes anchored to Mon 7/13.
   // Lets us compare across midnight-spanning rides.
   const driverLatestAbs = (d) => {
     if (!d.sundayLatestLeave || d.sundayLatestLeave === "whenever") {
-      // "Whenever" = no constraint. Use end-of-Monday as the cap.
-      return toAbs("2026-07-13", "23:59");
+      // "Whenever" = no constraint. Cap at end-of-Tuesday for slack.
+      return toAbs("2026-07-14", "23:59");
     }
-    return toAbs("2026-07-12", d.sundayLatestLeave);
+    return toAbs("2026-07-13", d.sundayLatestLeave);
   };
 
   const driverList = drivers.map((d) => ({

@@ -12,6 +12,6 @@ export const PREFLIGHT_BUFFER_MIN = 120;
 export const PARTY_DATES = {
   arriveStart: "2026-07-09",
   arriveEnd: "2026-07-12",
-  departStart: "2026-07-12",
+  departStart: "2026-07-13",
   departEnd: "2026-07-13",
 };
