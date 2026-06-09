@@ -294,18 +294,16 @@ textarea { min-height: 80px; resize: vertical; }
 
 .hidden { display: none !important; }
 
-.corner-logo {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  width: 96px;
+.brand-logo {
+  display: block;
+  width: 180px;
   height: auto;
-  pointer-events: none;
+  margin: 14px auto 10px;
   user-select: none;
 }
 
 @media (max-width: 540px) {
-  .corner-logo { width: 64px; top: 10px; left: 10px; }
+  .brand-logo { width: 140px; margin: 10px auto 8px; }
 }
 
 .takeover {
