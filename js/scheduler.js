@@ -66,13 +66,22 @@ export function planArrivals(submissions) {
   // Assigned set: passenger ids that already have a ride
   const assigned = new Set();
 
+  // Normalize: drivers may store passingAirports (array) or legacy passingAirport (string).
+  const driverAirportsOf = (d) =>
+    Array.isArray(d.passingAirports) && d.passingAirports.length
+      ? d.passingAirports
+      : d.passingAirport
+      ? [d.passingAirport]
+      : [];
+
   // Sort drivers by absolute airport-pass datetime.
   // "anytime" drivers get treated as end-of-day on their arriveDate (matches anyone
   // who landed earlier that day or before).
   const driversByPass = drivers
-    .filter((d) => d.passingAirport && d.passingAirportTime && d.arriveDate)
+    .filter((d) => driverAirportsOf(d).length && d.passingAirportTime && d.arriveDate)
     .map((d) => ({
       ...d,
+      _airports: driverAirportsOf(d),
       _isAnytime: d.passingAirportTime === "anytime",
       _absPass:
         d.passingAirportTime === "anytime"
@@ -87,17 +96,33 @@ export function planArrivals(submissions) {
     const cap = d.capacity || 0;
     if (cap <= 0) continue;
 
-    // Eligible passengers: same airport, not yet assigned, landed before driver passes
-    // (with deplane buffer; allow 30 min grace so driver arriving slightly early counts).
+    // Eligible passengers: airport in driver's willing list, not yet assigned, landed
+    // before driver passes (with deplane buffer; 30 min grace for slightly-early driver).
     const eligible = flying
-      .filter((p) => p.arriveAirport === d.passingAirport && !assigned.has(p.id))
+      .filter((p) => d._airports.includes(p.arriveAirport) && !assigned.has(p.id))
       .map((p) => ({ ...p, _absLand: toAbs(p.arriveDate, p.arriveTime) }))
       .filter((p) => p._absLand != null && p._absLand + DEPLANE_BUFFER_MIN - 30 <= d._absPass)
       .sort((a, b) => a._absLand - b._absLand);
 
     if (eligible.length === 0) continue;
 
-    const taken = eligible.slice(0, cap);
+    // A driver only swings by ONE airport per trip. If they're willing to do multiple,
+    // pick the airport with the most eligible passengers (cap-limited).
+    let chosenAirport = d._airports[0];
+    if (d._airports.length > 1) {
+      const byAirport = {};
+      for (const p of eligible) (byAirport[p.arriveAirport] ||= []).push(p);
+      let bestCount = -1;
+      for (const [ap, list] of Object.entries(byAirport)) {
+        const count = Math.min(list.length, cap);
+        if (count > bestCount) {
+          bestCount = count;
+          chosenAirport = ap;
+        }
+      }
+    }
+
+    const taken = eligible.filter((p) => p.arriveAirport === chosenAirport).slice(0, cap);
     const flags = [];
     if (!d._isAnytime) {
       for (const p of taken) {
@@ -116,8 +141,8 @@ export function planArrivals(submissions) {
       driverId: d.id,
       driverName: d.name,
       driverPhone: d.phone,
-      airport: d.passingAirport,
-      airportName: AIRPORTS[d.passingAirport]?.name || d.passingAirport,
+      airport: chosenAirport,
+      airportName: AIRPORTS[chosenAirport]?.name || chosenAirport,
       date: d.arriveDate,
       pickupTime: d._isAnytime ? null : toMin(d.arriveDate, d.passingAirportTime),
       pickupAnytime: d._isAnytime,
@@ -138,17 +163,20 @@ export function planArrivals(submissions) {
   // Drivers with no airport pickup (no eligible passengers) — show as direct
   const directDrivers = drivers
     .filter((d) => !rides.some((r) => r.driverId === d.id))
-    .map((d) => ({
-      type: "direct",
-      driverId: d.id,
-      driverName: d.name,
-      driverPhone: d.phone,
-      date: d.arriveDate,
-      leaveTime: d.arriveTime ? toMin(d.arriveDate, d.arriveTime) : null,
-      passengers: [],
-      flags: [],
-      passingAirport: d.passingAirport,
-    }));
+    .map((d) => {
+      const airports = driverAirportsOf(d);
+      return {
+        type: "direct",
+        driverId: d.id,
+        driverName: d.name,
+        driverPhone: d.phone,
+        date: d.arriveDate,
+        leaveTime: d.arriveTime ? toMin(d.arriveDate, d.arriveTime) : null,
+        passengers: [],
+        flags: [],
+        passingAirport: airports.join("/") || null,
+      };
+    });
 
   return { rides, directDrivers, unassigned };
 }

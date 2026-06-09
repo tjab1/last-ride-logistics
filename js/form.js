@@ -2,9 +2,11 @@ import { SUBMISSIONS, addDoc, serverTimestamp } from "./firebase.js";
 
 const $ = (id) => document.getElementById(id);
 
+const ALL_AIRPORTS = ["CVG", "SDF", "BNA", "LEX"];
+
 let role = null;
 let passengerMode = null;
-let driverAirport = null;
+let driverAirports = new Set();
 let sundayMode = null;
 let airportHelp = null; // "yes" or "no"
 let airportTimeMode = null; // "time" or "anytime"
@@ -52,12 +54,34 @@ $("driver-airport-help-picker").addEventListener("click", (e) => {
   $("driver-airport-pick-wrap").classList.remove("hidden");
 });
 
-// Driver airport
+// Driver airport — multi-select. "Any" toggles all four.
 $("driver-airport-picker").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-airport]");
   if (!btn) return;
-  driverAirport = btn.dataset.airport;
-  setActive($("driver-airport-picker"), btn);
+  const code = btn.dataset.airport;
+  const picker = $("driver-airport-picker");
+
+  if (code === "ANY") {
+    const allActive = ALL_AIRPORTS.every((a) => driverAirports.has(a));
+    if (allActive) {
+      driverAirports.clear();
+    } else {
+      ALL_AIRPORTS.forEach((a) => driverAirports.add(a));
+    }
+  } else {
+    if (driverAirports.has(code)) driverAirports.delete(code);
+    else driverAirports.add(code);
+  }
+
+  // Sync button states
+  picker.querySelectorAll("button[data-airport]").forEach((b) => {
+    const c = b.dataset.airport;
+    if (c === "ANY") {
+      b.classList.toggle("active", ALL_AIRPORTS.every((a) => driverAirports.has(a)));
+    } else {
+      b.classList.toggle("active", driverAirports.has(c));
+    }
+  });
 });
 
 // Airport time mode (Set a time / Anytime)
@@ -129,19 +153,21 @@ $("entry-form").addEventListener("submit", async (e) => {
     const arriveTime = val("driver-arrive-time");
     if (!arriveDate || !arriveTime) return showError("When are you leaving for the Airbnb?");
     if (!airportHelp) return showError("Can you grab people from the airport?");
-    if (!driverAirport) return showError("Which airport are you swinging by?");
+    if (driverAirports.size === 0) return showError("Which airport(s) are you swinging by?");
     if (!airportTimeMode) return showError("What time can you be at the airport?");
     if (airportTimeMode === "time" && !val("driver-airport-time"))
       return showError("Pick a time or choose 'Anytime'.");
     if (!sundayMode) return showError("Tell us about your Sunday departure.");
     if (sundayMode === "time" && !val("sunday-leave-time")) return showError("What time can you leave Sunday?");
 
+    const airportsArr = [...driverAirports];
     payload = {
       ...base,
       capacity,
       arriveDate,
       arriveTime,
-      passingAirport: driverAirport,
+      passingAirports: airportsArr,
+      passingAirport: airportsArr[0], // legacy single-airport field
       passingAirportTime: airportTimeMode === "anytime" ? "anytime" : val("driver-airport-time"),
       airportHelpWilling: airportHelp === "yes",
       sundayLatestLeave: sundayMode === "whenever" ? "whenever" : val("sunday-leave-time"),
