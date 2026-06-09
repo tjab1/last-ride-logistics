@@ -18,6 +18,22 @@ function toAbs(date, time) {
   return Date.UTC(y, mo - 1, d, h, mi) / 60000;
 }
 
+// Shift an ISO date back by N days. "2026-07-13" - 1 → "2026-07-12"
+function shiftDate(date, deltaDays) {
+  const [y, m, d] = date.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  return dt.toISOString().slice(0, 10);
+}
+
+// Normalize a (date, minutes-since-midnight) where minutes may be negative or >=1440.
+// Returns { date, minutes } where 0 <= minutes < 1440.
+function normalizeDateTime(date, minutes) {
+  let days = Math.floor(minutes / 1440);
+  let mins = minutes - days * 1440;
+  return { date: shiftDate(date, days), minutes: mins };
+}
+
 function fmtTime(mins) {
   const m = ((mins % (24 * 60)) + 24 * 60) % (24 * 60);
   let h = Math.floor(m / 60);
@@ -152,14 +168,15 @@ export function planDepartures(submissions) {
     return false;
   });
 
-  // Annotate each passenger with mustLeaveBy (minutes from midnight on returnDate)
+  // Annotate each passenger with normalized leave date+time (accounts for cross-midnight)
   const enriched = passengers
     .filter((p) => p.returnDate && p.returnTime && p.returnAirport)
     .map((p) => {
       const flightMin = toMin(p.returnDate, p.returnTime);
       const driveMin = AIRPORTS[p.returnAirport]?.driveMin ?? 240;
       const mustLeaveBy = flightMin - driveMin - PREFLIGHT_BUFFER_MIN;
-      return { ...p, mustLeaveBy, flightMin, driveMin };
+      const norm = normalizeDateTime(p.returnDate, mustLeaveBy);
+      return { ...p, mustLeaveBy, flightMin, driveMin, leaveDate: norm.date, leaveMin: norm.minutes };
     });
 
   // Drivers: remaining capacity, latest leave time (whenever = very late)
@@ -182,19 +199,18 @@ export function planDepartures(submissions) {
   const driverAssignedAirport = {};
 
   for (const p of enriched) {
-    // Find an existing ride going to same airport on same day where we can squeeze in
+    // Find an existing ride going to same airport on same (normalized) leave day where we can squeeze in
     let ride = rides.find(
       (r) =>
         r.airport === p.returnAirport &&
-        r.date === p.returnDate &&
+        r.date === p.leaveDate &&
         remaining[r.driverId] > 0 &&
-        // ride's leaveBy must still be feasible for this passenger
-        r.leaveBy <= p.mustLeaveBy
+        r.leaveBy <= p.leaveMin
     );
 
     if (ride) {
       ride.passengers.push(p);
-      ride.leaveBy = Math.min(ride.leaveBy, p.mustLeaveBy);
+      ride.leaveBy = Math.min(ride.leaveBy, p.leaveMin);
       remaining[ride.driverId]--;
       continue;
     }
@@ -213,7 +229,7 @@ export function planDepartures(submissions) {
     if (!candidate) {
       unassigned.push({
         ...p,
-        reason: `No driver can leave Cadiz by ${fmtTime(p.mustLeaveBy)} for ${p.returnAirport}`,
+        reason: `No driver can leave Cadiz by ${fmtDate(p.leaveDate)} ${fmtTime(p.leaveMin)} for ${p.returnAirport}`,
       });
       continue;
     }
@@ -226,8 +242,8 @@ export function planDepartures(submissions) {
       driverPhone: candidate.phone,
       airport: p.returnAirport,
       airportName: AIRPORTS[p.returnAirport]?.name || p.returnAirport,
-      date: p.returnDate,
-      leaveBy: p.mustLeaveBy,
+      date: p.leaveDate,
+      leaveBy: p.leaveMin,
       passengers: [p],
       flags: [],
     };
