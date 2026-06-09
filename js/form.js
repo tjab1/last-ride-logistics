@@ -31,12 +31,11 @@ $("driver-airport-help-picker").addEventListener("click", (e) => {
   setActive($("driver-airport-help-picker"), btn);
 
   if (airportHelp === "no") {
-    // Lock the "Naw cheif" button to the joke text and reveal the airport picker anyway
+    // Hide the "Down" button and lock the "Naw cheif" button to the joke text
     btn.textContent = "I like femboys so I don't have a choice";
     btn.disabled = true;
-    // Also disable the other button to make it final
     const yesBtn = $("driver-airport-help-picker").querySelector('[data-help="yes"]');
-    if (yesBtn) yesBtn.disabled = true;
+    if (yesBtn) yesBtn.classList.add("hidden");
   }
   $("driver-airport-pick-wrap").classList.remove("hidden");
 });
