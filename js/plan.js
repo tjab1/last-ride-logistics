@@ -1,0 +1,154 @@
+import { SUBMISSIONS, OVERRIDES_DOC, onSnapshot, query, orderBy } from "./firebase.js";
+import { planArrivals, planDepartures, helpers } from "./scheduler.js";
+import { AIRPORTS } from "./airports.js";
+
+const { fmtTime, fmtDate, toMin } = helpers;
+const $ = (id) => document.getElementById(id);
+
+let overrides = null;
+
+function snapToList(snap) {
+  const arr = [];
+  snap.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+  return arr;
+}
+
+function render(submissions) {
+  $("loading").classList.add("hidden");
+  $("plan-content").classList.remove("hidden");
+
+  const driverCount = submissions.filter((s) => s.role === "driver").length;
+  const paxCount = submissions.filter((s) => s.role === "passenger").length;
+  $("arrival-meta").textContent = `${driverCount} drivers · ${paxCount} passengers`;
+
+  // ARRIVALS
+  const { rides: arrRides, directDrivers, unassigned: arrUnassigned } = planArrivals(submissions);
+  const arrivalEl = $("arrivals");
+  arrivalEl.innerHTML = "";
+
+  if (arrRides.length === 0 && directDrivers.length === 0) {
+    arrivalEl.innerHTML = `<div class="empty-state">No rides yet. Get folks to submit.</div>`;
+  } else {
+    // Sort by date then time
+    const sorted = [...arrRides].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.pickupTime - b.pickupTime
+    );
+    for (const r of sorted) {
+      arrivalEl.appendChild(renderRide(r, "arrival"));
+    }
+    for (const d of directDrivers) {
+      arrivalEl.appendChild(renderRide(d, "direct"));
+    }
+  }
+
+  // DEPARTURES
+  const { rides: depRides, unassigned: depUnassigned } = planDepartures(submissions);
+  const departureEl = $("departures");
+  departureEl.innerHTML = "";
+
+  const depCount = depRides.length;
+  $("departure-meta").textContent = depCount === 0 ? "Nothing scheduled" : `${depCount} airport runs`;
+
+  if (depRides.length === 0) {
+    departureEl.innerHTML = `<div class="empty-state">No Sunday airport runs yet.</div>`;
+  } else {
+    const sorted = [...depRides].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.leaveBy - b.leaveBy
+    );
+    for (const r of sorted) {
+      departureEl.appendChild(renderRide(r, "departure"));
+    }
+  }
+
+  // UNASSIGNED
+  const unassigned = [...arrUnassigned, ...depUnassigned];
+  if (unassigned.length > 0) {
+    $("unassigned-section").classList.remove("hidden");
+    const ul = $("unassigned");
+    ul.innerHTML = "";
+    for (const p of unassigned) {
+      const card = document.createElement("div");
+      card.className = "ride unassigned-card";
+      const direction = p.reason?.includes("by") ? "Sunday departure" : "Arrival";
+      card.innerHTML = `
+        <h3>${escapeHtml(p.name)} <span class="pill danger">${direction}</span></h3>
+        <div class="when">${escapeHtml(p.reason || "Unmatched")}</div>
+        <div>${renderPassengerLine(p)}</div>
+      `;
+      ul.appendChild(card);
+    }
+  } else {
+    $("unassigned-section").classList.add("hidden");
+  }
+}
+
+function renderRide(r, kind) {
+  const div = document.createElement("div");
+  div.className = "ride";
+  if (r.flags?.some((f) => f.level === "warn")) div.classList.add("warn");
+  if (r.flags?.some((f) => f.level === "danger")) div.classList.add("conflict");
+
+  let header, when, pillText, pillCls;
+
+  if (kind === "arrival") {
+    pillText = "Arrival";
+    pillCls = "";
+    header = `${r.driverName}'s car → ${r.airportName}`;
+    when = `${fmtDate(r.date)} · pickup ${fmtTime(r.pickupTime)} at ${r.airport}`;
+  } else if (kind === "direct") {
+    pillText = "Direct";
+    pillCls = "green";
+    header = `${r.driverName}'s car → straight to Cadiz`;
+    const passingHint = r.passingAirport ? ` (passing ${r.passingAirport})` : "";
+    when = r.pickupTime != null
+      ? `${fmtDate(r.date)} · arriving Airbnb ${fmtTime(r.pickupTime)}${passingHint}`
+      : `${fmtDate(r.date)}${passingHint}`;
+    if ((r.passengers || []).length === 0) div.classList.add("empty");
+  } else {
+    pillText = "Sunday";
+    pillCls = "";
+    header = `${r.driverName}'s car → ${r.airportName}`;
+    when = `${fmtDate(r.date)} · leave Cadiz by ${fmtTime(r.leaveBy)}`;
+  }
+
+  div.innerHTML = `
+    <h3>${escapeHtml(header)} <span class="pill ${pillCls}">${pillText}</span></h3>
+    <div class="when">${escapeHtml(when)} · driver: ${escapeHtml(r.driverPhone || "")}</div>
+    ${
+      r.passengers && r.passengers.length > 0
+        ? `<ul>${r.passengers.map((p) => `<li>${renderPassengerLine(p)}</li>`).join("")}</ul>`
+        : kind === "direct"
+        ? `<div style="color:var(--ink-soft); font-style: italic; font-size:0.9rem;">No passengers — riding solo.</div>`
+        : `<div style="color:var(--ink-soft); font-style: italic; font-size:0.9rem;">No passengers assigned.</div>`
+    }
+    ${(r.flags || []).map((f) => `<div class="flag ${f.level === "warn" ? "warn" : ""}">${escapeHtml(f.msg)}</div>`).join("")}
+  `;
+  return div;
+}
+
+function renderPassengerLine(p) {
+  if (p.mode === "flying" || p.arriveAirport) {
+    const arr = p.arriveTime ? ` (lands ${fmtTime(toMin(p.arriveDate, p.arriveTime))})` : "";
+    const ret = p.returnTime && p.returnAirport
+      ? ` · flies out ${fmtDate(p.returnDate)} ${fmtTime(toMin(p.returnDate, p.returnTime))} from ${p.returnAirport}`
+      : "";
+    return `<strong>${escapeHtml(p.name)}</strong>${arr}${ret}`;
+  }
+  if (p.mode === "kentucky") {
+    return `<strong>${escapeHtml(p.name)}</strong> (from ${escapeHtml(p.town || "KY")})`;
+  }
+  return `<strong>${escapeHtml(p.name)}</strong>`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+// Live subscription
+const q = query(SUBMISSIONS, orderBy("createdAt"));
+onSnapshot(q, (snap) => {
+  const subs = snapToList(snap);
+  render(subs);
+});

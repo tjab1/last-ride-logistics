@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Plan — Hunter's Last Ride</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="wrap-wide">
+    <header class="brand">
+      <div class="eyebrow">Hunter's Last Ride · Live Plan</div>
+      <h1>Who's in whose car</h1>
+      <div class="subtitle">Updates as people submit. Check back before you pack.</div>
+    </header>
+
+    <div id="loading" class="empty-state">Loading...</div>
+    <div id="plan-content" class="hidden">
+      <div class="section-head">
+        <h2>Getting to Cadiz</h2>
+        <div class="meta" id="arrival-meta"></div>
+      </div>
+      <div id="arrivals"></div>
+
+      <div class="section-head">
+        <h2>Sunday: getting home</h2>
+        <div class="meta" id="departure-meta"></div>
+      </div>
+      <div id="departures"></div>
+
+      <div id="unassigned-section" class="hidden">
+        <div class="section-head">
+          <h2 style="color:var(--danger);">Loose ends</h2>
+          <div class="meta">Folks not yet matched to a ride</div>
+        </div>
+        <div id="unassigned"></div>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <a href="index.html">Submit info</a> ·
+      <a href="admin.html">Admin</a>
+    </div>
+  </div>
+
+  <script type="module" src="js/plan.js"></script>
+</body>
+</html>

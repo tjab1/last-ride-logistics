@@ -1,0 +1,16 @@
+// Paste these into Firebase Console → Firestore Database → Rules → Publish.
+// They allow anyone to read/write submissions (fine for a friends-only invite-link site).
+// If you want to lock it down further, swap to auth-based rules.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /submissions/{id} {
+      allow read, create: if true;
+      allow update, delete: if true;
+    }
+    match /meta/{id} {
+      allow read, write: if true;
+    }
+  }
+}

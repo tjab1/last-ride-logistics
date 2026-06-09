@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hunter's Last Ride — Transport Logistics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <div class="eyebrow">Hunter's Last Ride · Cadiz, KY · July 9–13, 2026</div>
+      <h1>Transport Logistics</h1>
+      <div class="subtitle">Tell us how you're getting to bourbon country.</div>
+    </header>
+
+    <div id="form-card" class="card">
+      <label>Are you driving or riding?</label>
+      <div class="role-picker" id="role-picker">
+        <button type="button" data-role="driver">
+          The Driver
+          <small>I've got a car and seats to fill.</small>
+        </button>
+        <button type="button" data-role="passenger">
+          The Passenger
+          <small>Get me to the cabin in one piece.</small>
+        </button>
+      </div>
+
+      <form id="entry-form" class="hidden" autocomplete="on">
+        <div class="row">
+          <div>
+            <label for="name">Name</label>
+            <input id="name" type="text" required />
+          </div>
+          <div>
+            <label for="phone">Phone <span class="hint">(so we can text you)</span></label>
+            <input id="phone" type="tel" required placeholder="555-555-5555" />
+          </div>
+        </div>
+
+        <!-- DRIVER FIELDS -->
+        <div id="driver-fields" class="hidden">
+          <label for="capacity">Seats for passengers <span class="hint">(not counting you)</span></label>
+          <input id="capacity" type="number" min="1" max="8" placeholder="3" />
+
+          <div class="note">
+            Heads up: those seats also need to fit luggage. If you've got a 4-seater and 4 guys with golf bags, the math doesn't work. Be honest.
+          </div>
+
+          <label for="driver-arrive-date">When are you getting to the Airbnb?</label>
+          <div class="row">
+            <input id="driver-arrive-date" type="date" min="2026-07-09" max="2026-07-12" />
+            <input id="driver-arrive-time" type="time" />
+          </div>
+
+          <label>Are you passing by an airport on the way down?</label>
+          <div class="subrole-picker" id="driver-airport-picker">
+            <button type="button" data-airport="none">No, direct</button>
+            <button type="button" data-airport="CVG">CVG</button>
+            <button type="button" data-airport="SDF">SDF</button>
+            <button type="button" data-airport="BNA">BNA</button>
+            <button type="button" data-airport="LEX">LEX</button>
+          </div>
+          <div id="driver-airport-time-wrap" class="hidden">
+            <label for="driver-airport-time">What time could you be at that airport for pickup?</label>
+            <input id="driver-airport-time" type="time" />
+          </div>
+
+          <label>How late can you stick around on Sunday before heading back?</label>
+          <div class="subrole-picker" id="sunday-picker">
+            <button type="button" data-sunday="time">Set a time</button>
+            <button type="button" data-sunday="whenever">Whenever, doesn't matter</button>
+          </div>
+          <div id="sunday-time-wrap" class="hidden">
+            <label for="sunday-leave-time">Latest I can leave Cadiz on Sunday</label>
+            <input id="sunday-leave-time" type="time" />
+          </div>
+
+          <label for="driver-notes">Anything else? <span class="hint">(optional)</span></label>
+          <textarea id="driver-notes" placeholder="Truck bed for golf clubs, allergic to country music, etc."></textarea>
+        </div>
+
+        <!-- PASSENGER FIELDS -->
+        <div id="passenger-fields" class="hidden">
+          <label>Are you flying in, or already in Kentucky?</label>
+          <div class="subrole-picker" id="passenger-mode-picker">
+            <button type="button" data-mode="flying">Flying in</button>
+            <button type="button" data-mode="kentucky">Already in KY</button>
+          </div>
+
+          <div id="flying-fields" class="hidden">
+            <label>Arrival flight</label>
+            <div class="row">
+              <input id="arrive-date" type="date" min="2026-07-09" max="2026-07-12" />
+              <input id="arrive-time" type="time" />
+            </div>
+
+            <label for="arrive-airport">Arrival airport</label>
+            <select id="arrive-airport">
+              <option value="">— Pick one —</option>
+              <option value="CVG">Cincinnati (CVG) — most folks</option>
+              <option value="SDF">Louisville (SDF)</option>
+              <option value="BNA">Nashville (BNA)</option>
+              <option value="LEX">Lexington (LEX)</option>
+            </select>
+
+            <label>Return flight</label>
+            <div class="row">
+              <input id="return-date" type="date" min="2026-07-12" max="2026-07-13" />
+              <input id="return-time" type="time" />
+            </div>
+
+            <div class="checkbox-row">
+              <input id="return-same-airport" type="checkbox" checked />
+              <label for="return-same-airport">Return flight leaves from the same airport</label>
+            </div>
+
+            <div id="return-airport-wrap" class="hidden">
+              <label for="return-airport">Return airport</label>
+              <select id="return-airport">
+                <option value="">— Pick one —</option>
+                <option value="CVG">Cincinnati (CVG)</option>
+                <option value="SDF">Louisville (SDF)</option>
+                <option value="BNA">Nashville (BNA)</option>
+                <option value="LEX">Lexington (LEX)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="kentucky-fields" class="hidden">
+            <label for="ky-town">What town are you in?</label>
+            <input id="ky-town" type="text" placeholder="Bowling Green, Paducah, etc." />
+
+            <label>When are you getting to the Airbnb?</label>
+            <div class="row">
+              <input id="ky-arrive-date" type="date" min="2026-07-09" max="2026-07-12" />
+              <input id="ky-arrive-time" type="time" />
+            </div>
+
+            <label>Do you need a ride to an airport on Sunday?</label>
+            <div class="subrole-picker" id="ky-needs-ride-picker">
+              <button type="button" data-needs="no">No, I've got it</button>
+              <button type="button" data-needs="yes">Yes, please</button>
+            </div>
+            <div id="ky-return-fields" class="hidden">
+              <label>Return flight</label>
+              <div class="row">
+                <input id="ky-return-date" type="date" min="2026-07-12" max="2026-07-13" />
+                <input id="ky-return-time" type="time" />
+              </div>
+              <label for="ky-return-airport">Return airport</label>
+              <select id="ky-return-airport">
+                <option value="">— Pick one —</option>
+                <option value="CVG">Cincinnati (CVG)</option>
+                <option value="SDF">Louisville (SDF)</option>
+                <option value="BNA">Nashville (BNA)</option>
+                <option value="LEX">Lexington (LEX)</option>
+              </select>
+            </div>
+          </div>
+
+          <label for="passenger-notes">Anything else? <span class="hint">(optional)</span></label>
+          <textarea id="passenger-notes" placeholder="Bringing clubs, dietary issues, etc."></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn" id="submit-btn">Lock it in</button>
+          <button type="button" class="btn btn-ghost" id="reset-btn">Start over</button>
+        </div>
+
+        <div id="form-error" class="flag hidden" style="margin-top:14px;background:#fde2dd;border:1px solid var(--danger);color:var(--danger);padding:10px;border-radius:4px;"></div>
+      </form>
+    </div>
+
+    <div id="success-card" class="card success hidden">
+      <h2>You're on the list.</h2>
+      <p>We'll sort the rest out. Check the live plan once everyone's submitted.</p>
+      <div class="btn-row" style="justify-content:center;">
+        <a href="plan.html" class="btn">See the plan</a>
+        <button type="button" class="btn btn-ghost" id="add-another-btn">Add someone else</button>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <a href="plan.html">Live plan</a> ·
+      <a href="admin.html">Admin</a>
+    </div>
+  </div>
+
+  <script type="module" src="js/form.js"></script>
+</body>
+</html>

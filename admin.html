@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Hunter's Last Ride</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="login-screen" class="wrap">
+    <div class="card login-card">
+      <h2>Backstage</h2>
+      <p style="color:var(--ink-soft);">Password required.</p>
+      <input id="pw" type="password" placeholder="password" />
+      <div class="btn-row" style="justify-content:center;">
+        <button class="btn" id="pw-go">Enter</button>
+      </div>
+      <div id="pw-error" class="hidden" style="color:var(--danger); margin-top:10px;">Nope.</div>
+    </div>
+  </div>
+
+  <div id="admin-screen" class="wrap-wide hidden">
+    <header class="brand">
+      <div class="eyebrow">Hunter's Last Ride · Admin</div>
+      <h1>Command Center</h1>
+      <div class="subtitle">All submissions. Edit, delete, overrule the scheduler.</div>
+    </header>
+
+    <div class="tabs">
+      <button data-tab="people" class="active">People</button>
+      <button data-tab="plan">Plan preview</button>
+      <button data-tab="export">Export</button>
+    </div>
+
+    <div id="tab-people">
+      <div class="section-head">
+        <h2>Submissions</h2>
+        <div class="meta" id="people-count"></div>
+      </div>
+      <div id="people" class="admin-grid"></div>
+    </div>
+
+    <div id="tab-plan" class="hidden">
+      <p style="color:var(--ink-soft);">This is the same plan view as the public page. Use it to spot conflicts and unassigned folks before sending the link out.</p>
+      <iframe src="plan.html" style="width:100%; height:700px; border:1px solid var(--line); border-radius:4px; background:var(--cream);"></iframe>
+    </div>
+
+    <div id="tab-export" class="hidden">
+      <p style="color:var(--ink-soft);">Raw JSON dump. Copy this somewhere safe before the trip.</p>
+      <textarea id="export-json" style="font-family: monospace; font-size: 0.8rem; min-height: 400px;" readonly></textarea>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="copy-json">Copy JSON</button>
+      </div>
+    </div>
+
+    <!-- Edit modal -->
+    <div id="edit-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:100;">
+      <div class="card" style="max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
+        <h2 id="edit-title">Edit</h2>
+        <div id="edit-body"></div>
+        <div class="btn-row">
+          <button class="btn" id="edit-save">Save</button>
+          <button class="btn btn-ghost" id="edit-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <a href="index.html">Form</a> · <a href="plan.html">Public plan</a>
+    </div>
+  </div>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>
