@@ -294,6 +294,20 @@ textarea { min-height: 80px; resize: vertical; }
 
 .hidden { display: none !important; }
 
+.corner-logo {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 96px;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 540px) {
+  .corner-logo { width: 64px; top: 10px; left: 10px; }
+}
+
 .takeover {
   position: fixed;
   inset: 0;
