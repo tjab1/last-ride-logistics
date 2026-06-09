@@ -294,6 +294,26 @@ textarea { min-height: 80px; resize: vertical; }
 
 .hidden { display: none !important; }
 
+.takeover {
+  position: fixed;
+  inset: 0;
+  background: #1a1410;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vw;
+}
+
+.takeover img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .success {
   text-align: center;
   padding: 40px 20px;

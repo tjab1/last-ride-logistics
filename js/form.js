@@ -13,6 +13,15 @@ function setActive(container, target) {
   container.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === target));
 }
 
+function showTakeover(durationMs, after) {
+  const el = $("takeover");
+  el.classList.remove("hidden");
+  setTimeout(() => {
+    el.classList.add("hidden");
+    if (after) after();
+  }, durationMs);
+}
+
 // Role picker
 $("role-picker").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-role]");
@@ -37,6 +46,7 @@ $("driver-airport-help-picker").addEventListener("click", (e) => {
     btn.disabled = true;
     const yesBtn = $("driver-airport-help-picker").querySelector('[data-help="yes"]');
     if (yesBtn) yesBtn.classList.add("hidden");
+    showTakeover(6000);
   }
   $("driver-airport-pick-wrap").classList.remove("hidden");
 });
@@ -189,5 +199,5 @@ $("entry-form").addEventListener("submit", async (e) => {
   }
 });
 
-$("reset-btn").addEventListener("click", () => location.reload());
+$("reset-btn").addEventListener("click", () => showTakeover(6000, () => location.reload()));
 $("add-another-btn").addEventListener("click", () => location.reload());
