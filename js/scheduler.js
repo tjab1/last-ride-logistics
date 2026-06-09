@@ -1,14 +1,21 @@
 import { AIRPORTS, PREFLIGHT_BUFFER_MIN } from "./airports.js";
 
-// Window in minutes — passengers arriving within this much of each other (same airport, same day)
-// can share a ride.
-const ARRIVAL_CLUSTER_MIN = 90;
 // Buffer between flight arrival and pickup (deplaning, bags, etc.)
 const DEPLANE_BUFFER_MIN = 30;
+// Flag if driver-arrives more than this long after passenger lands (warn, don't block)
+const LONG_WAIT_FLAG_MIN = 4 * 60;
 
 function toMin(date, time) {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
+}
+
+// Absolute minutes for a (date, time). Used when comparing across days.
+function toAbs(date, time) {
+  if (!date || !time) return null;
+  const [y, mo, d] = date.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  return Date.UTC(y, mo - 1, d, h, mi) / 60000;
 }
 
 function fmtTime(mins) {
@@ -28,11 +35,11 @@ function fmtDate(iso) {
 }
 
 // --------------- ARRIVALS ---------------
-// For each flying passenger, find a driver who:
-//   - is passing the same airport
-//   - is at the airport at-or-after passenger arrival + DEPLANE_BUFFER_MIN
-//   - has remaining capacity
-// Greedy: passengers sorted by arrival time, assigned to earliest-available driver.
+// Each driver passing an airport picks up any passengers at that airport who landed
+// before (or just after) the driver's pass time. Passengers arriving on earlier days
+// are eligible for a later driver's pass — they just wait at/near the airport.
+// Greedy: drivers in chronological order; each takes the earliest-arriving unassigned
+// passengers at their airport up to capacity.
 
 export function planArrivals(submissions) {
   const drivers = submissions.filter((s) => s.role === "driver");
@@ -40,97 +47,70 @@ export function planArrivals(submissions) {
     (s) => s.role === "passenger" && s.mode === "flying"
   );
 
-  // Driver state: remaining capacity by id
-  const remaining = {};
-  drivers.forEach((d) => (remaining[d.id] = d.capacity || 0));
+  // Assigned set: passenger ids that already have a ride
+  const assigned = new Set();
 
-  // Group passengers by airport+date, sort by time
-  const byAirportDate = {};
-  flying.forEach((p) => {
-    const key = `${p.arriveAirport}|${p.arriveDate}`;
-    (byAirportDate[key] ||= []).push(p);
-  });
-  Object.values(byAirportDate).forEach((arr) =>
-    arr.sort((a, b) => toMin(a.arriveDate, a.arriveTime) - toMin(b.arriveDate, b.arriveTime))
-  );
+  // Sort drivers by absolute airport-pass datetime
+  const driversByPass = drivers
+    .filter((d) => d.passingAirport && d.passingAirportTime && d.arriveDate)
+    .map((d) => ({
+      ...d,
+      _absPass: toAbs(d.arriveDate, d.passingAirportTime),
+    }))
+    .sort((a, b) => a._absPass - b._absPass);
 
-  // Build rides
-  const rides = []; // {driverId, airport, date, pickupTime (min), passengers: [], flags: []}
-  const unassigned = [];
+  const rides = [];
 
-  for (const [key, passengers] of Object.entries(byAirportDate)) {
-    const [airport, date] = key.split("|");
-    // Find candidate drivers for this airport+date
-    const candidates = drivers
-      .filter((d) => d.passingAirport === airport && d.arriveDate === date)
-      .sort((a, b) => toMin(date, a.passingAirportTime) - toMin(date, b.passingAirportTime));
+  for (const d of driversByPass) {
+    const cap = d.capacity || 0;
+    if (cap <= 0) continue;
 
-    let didx = 0;
-    let currentRide = null;
+    // Eligible passengers: same airport, not yet assigned, landed before driver passes
+    // (with deplane buffer; allow 30 min grace so driver arriving slightly early counts).
+    const eligible = flying
+      .filter((p) => p.arriveAirport === d.passingAirport && !assigned.has(p.id))
+      .map((p) => ({ ...p, _absLand: toAbs(p.arriveDate, p.arriveTime) }))
+      .filter((p) => p._absLand != null && p._absLand + DEPLANE_BUFFER_MIN - 30 <= d._absPass)
+      .sort((a, b) => a._absLand - b._absLand);
 
-    for (const p of passengers) {
-      const pTime = toMin(date, p.arriveTime) + DEPLANE_BUFFER_MIN;
+    if (eligible.length === 0) continue;
 
-      // Continue current ride if within cluster window AND driver still has room
-      if (
-        currentRide &&
-        remaining[currentRide.driverId] > 0 &&
-        pTime - currentRide.pickupTime <= ARRIVAL_CLUSTER_MIN
-      ) {
-        currentRide.passengers.push(p);
-        currentRide.pickupTime = Math.max(currentRide.pickupTime, pTime);
-        remaining[currentRide.driverId]--;
-        continue;
-      }
-
-      // Otherwise, find a driver who can be at the airport by pTime, has room
-      let chosen = null;
-      for (let i = didx; i < candidates.length; i++) {
-        const d = candidates[i];
-        const dTime = toMin(date, d.passingAirportTime);
-        if (remaining[d.id] > 0 && dTime >= pTime - 30) {
-          chosen = d;
-          didx = i;
-          break;
-        }
-      }
-
-      if (!chosen) {
-        // Fallback: any driver at this airport on this date with remaining capacity
-        chosen = candidates.find((d) => remaining[d.id] > 0);
-      }
-
-      if (!chosen) {
-        unassigned.push({ ...p, reason: `No driver passing ${airport} on ${fmtDate(date)}` });
-        continue;
-      }
-
-      const dTime = toMin(date, chosen.passingAirportTime);
-      const pickupTime = Math.max(dTime, pTime);
-      currentRide = {
-        type: "arrival",
-        driverId: chosen.id,
-        driverName: chosen.name,
-        driverPhone: chosen.phone,
-        airport,
-        airportName: AIRPORTS[airport]?.name || airport,
-        date,
-        pickupTime,
-        passengers: [p],
-        flags: [],
-      };
-      if (dTime < pTime - 30) {
-        currentRide.flags.push({
+    const taken = eligible.slice(0, cap);
+    const flags = [];
+    for (const p of taken) {
+      const waitMin = d._absPass - (p._absLand + DEPLANE_BUFFER_MIN);
+      if (waitMin >= LONG_WAIT_FLAG_MIN) {
+        flags.push({
           level: "warn",
-          msg: `Driver was at airport at ${fmtTime(dTime)} but ${p.name} doesn't land until ${fmtTime(toMin(date, p.arriveTime))}. Driver may need to wait.`,
+          msg: `${p.name} lands ${fmtDate(p.arriveDate)} ${fmtTime(toMin(p.arriveDate, p.arriveTime))} — ${Math.round(waitMin / 60)}h before pickup.`,
         });
       }
-      rides.push(currentRide);
-      remaining[chosen.id]--;
     }
+
+    rides.push({
+      type: "arrival",
+      driverId: d.id,
+      driverName: d.name,
+      driverPhone: d.phone,
+      airport: d.passingAirport,
+      airportName: AIRPORTS[d.passingAirport]?.name || d.passingAirport,
+      date: d.arriveDate,
+      pickupTime: toMin(d.arriveDate, d.passingAirportTime),
+      passengers: taken,
+      flags,
+    });
+    taken.forEach((p) => assigned.add(p.id));
   }
 
-  // Drivers with no airport assignment (direct to Airbnb)
+  // Anyone unassigned
+  const unassigned = flying
+    .filter((p) => !assigned.has(p.id))
+    .map((p) => ({
+      ...p,
+      reason: `No driver swings by ${p.arriveAirport} after you land`,
+    }));
+
+  // Drivers with no airport pickup (no eligible passengers) — show as direct
   const directDrivers = drivers
     .filter((d) => !rides.some((r) => r.driverId === d.id))
     .map((d) => ({
@@ -139,7 +119,7 @@ export function planArrivals(submissions) {
       driverName: d.name,
       driverPhone: d.phone,
       date: d.arriveDate,
-      pickupTime: d.arriveTime ? toMin(d.arriveDate, d.arriveTime) : null,
+      leaveTime: d.arriveTime ? toMin(d.arriveDate, d.arriveTime) : null,
       passengers: [],
       flags: [],
       passingAirport: d.passingAirport,

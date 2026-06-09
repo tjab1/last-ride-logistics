@@ -100,8 +100,8 @@ function renderRide(r, kind) {
     pillCls = "green";
     header = `${r.driverName}'s car → straight to Cadiz`;
     const passingHint = r.passingAirport ? ` (passing ${r.passingAirport})` : "";
-    when = r.pickupTime != null
-      ? `${fmtDate(r.date)} · arriving Airbnb ${fmtTime(r.pickupTime)}${passingHint}`
+    when = r.leaveTime != null
+      ? `${fmtDate(r.date)} · leaving for Airbnb ${fmtTime(r.leaveTime)}${passingHint}`
       : `${fmtDate(r.date)}${passingHint}`;
     if ((r.passengers || []).length === 0) div.classList.add("empty");
   } else {
