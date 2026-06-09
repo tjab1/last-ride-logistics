@@ -13,8 +13,9 @@ function setActive(container, target) {
   container.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === target));
 }
 
-function showTakeover(durationMs, after) {
+function showTakeover(src, durationMs, after) {
   const el = $("takeover");
+  $("takeover-img").src = src;
   el.classList.remove("hidden");
   setTimeout(() => {
     el.classList.add("hidden");
@@ -46,7 +47,7 @@ $("driver-airport-help-picker").addEventListener("click", (e) => {
     btn.disabled = true;
     const yesBtn = $("driver-airport-help-picker").querySelector('[data-help="yes"]');
     if (yesBtn) yesBtn.classList.add("hidden");
-    showTakeover(6000);
+    showTakeover("img/takeover.png", 3000);
   }
   $("driver-airport-pick-wrap").classList.remove("hidden");
 });
@@ -199,5 +200,5 @@ $("entry-form").addEventListener("submit", async (e) => {
   }
 });
 
-$("reset-btn").addEventListener("click", () => showTakeover(6000, () => location.reload()));
+$("reset-btn").addEventListener("click", () => showTakeover("img/startover.jpg", 3000, () => location.reload()));
 $("add-another-btn").addEventListener("click", () => location.reload());
